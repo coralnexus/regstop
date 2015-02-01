@@ -1,0 +1,6 @@
+name = RegStop
+description = This module allows administrators to blacklist domains from registering at the host site 
+core = 7.x
+files[] = regstop.module
+package = "Spam control"
+configure = admin/config/people/regstop

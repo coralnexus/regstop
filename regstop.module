@@ -1,0 +1,70 @@
+<?php
+
+function regstop_menu() {
+  $items['admin/config/people/regstop'] = array(
+    'title' => 'RegStop configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('regstop_blacklist_form'),
+    'access arguments' => array('administer regstop')
+  );
+
+  return $items;
+}
+
+
+function regstop_blacklist_form() {
+  $form = array();
+
+  $form['regstop_blacklist_message'] = array(
+    '#title' => t('RegStop message'),
+    '#type' => 'textfield',
+    '#description' => t('The registration error message to display on registration failure.'),
+    '#default_value' => variable_get('regstop_blacklist_message', 'Registration failed for unknown reasons. Please try again.'),
+  );
+
+  $form['regstop_blacklist_domains'] = array(
+    '#title' => t('Blacklisted domains'),
+    '#type' => 'textarea',
+    '#description' => t('List of domains to block from registration. One per line. eg: "drupaler" or "spambot"'),
+    '#default_value' => variable_get('regstop_blacklist_domains', ''),
+  );
+
+  return system_settings_form($form);
+}
+
+
+function regstop_blacklist_form_validate($form, &$form_state) {
+  // Do things - or not
+}
+
+
+function regstop_permission() {
+  return array(
+    'administer regstop' => array(
+      'title' => t('Administer regstop'),
+      'description' => t('Add and remove domains from regstop blacklist'),
+    ),
+  );
+}
+
+function regstop_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_register_form') {
+    $form['#validate'][] = 'regstop_registration_validate';
+    //$form['#access'] = false; // temp fix to prevent all registration
+  }
+}
+
+function regstop_registration_validate($form, &$form_state) {
+  $mail = $form_state['values']['mail'];
+  $blacklist = variable_get('regstop_blacklist_domains', '');
+  $blacklist = explode("\r\n", $blacklist);
+  $submitted_domain = substr(strrchr($mail, "@"), 1);
+  $submitted_domain = preg_split('/(?=\.[^.]+$)/', $submitted_domain);
+
+  if (in_array($submitted_domain[0], $blacklist)) {
+    form_set_error('account', variable_get('regstop_blacklist_message'));
+    watchdog('RegStop', 'Blocked registration from '.filter_xss_admin($mail), NULL, WATCHDOG_NOTICE);
+  }
+}
+
+
